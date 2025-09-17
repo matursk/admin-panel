@@ -499,6 +499,18 @@
           btn.setAttribute('aria-selected', String(isActive));
         });
         if (tab === 'version') { loadVersion(); }
+        if (tab === 'questions') {
+          if (questionsLectionSelect && questionsLectionSelect.options.length > 0) {
+            // Auto-load for currently selected or first option
+            if (!questionsLectionSelect.value && questionsLectionSelect.options.length) {
+              questionsLectionSelect.selectedIndex = 0;
+            }
+            loadExistingQuestions();
+          } else {
+            // Populate select then auto-load
+            loadLectionsForSelect();
+          }
+        }
       };
       tabBtnLections.addEventListener('click', () => setActiveTab('lections'));
       tabBtnQuestions.addEventListener('click', () => setActiveTab('questions'));
@@ -675,14 +687,18 @@
             opt.textContent = o.title || '(untitled)';
             questionsLectionSelect.appendChild(opt);
           });
-          // Auto-select provided default id if present in options
-          if (DEFAULT_QUESTIONS_LECTION_ID) {
-            const hasDefault = opts.some(o => o.id === DEFAULT_QUESTIONS_LECTION_ID);
-            if (hasDefault) {
-              questionsLectionSelect.value = DEFAULT_QUESTIONS_LECTION_ID;
-              // Preload questions for convenience
-              await loadExistingQuestions();
-            }
+          // Prefer default id, else the first item; then auto-load
+          let selectedId = null;
+          if (DEFAULT_QUESTIONS_LECTION_ID && opts.some(o => o.id === DEFAULT_QUESTIONS_LECTION_ID)) {
+            selectedId = DEFAULT_QUESTIONS_LECTION_ID;
+          } else if (opts.length) {
+            selectedId = opts[0].id;
+          }
+          if (selectedId) {
+            questionsLectionSelect.value = selectedId;
+            await loadExistingQuestions();
+          } else {
+            setQuestionsStatus('No active lections found', 'error');
           }
         } catch (e) {
           console.error(e);
