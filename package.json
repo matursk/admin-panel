@@ -1,0 +1,37 @@
+{
+  "name": "admin-panel",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "firebase-config.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matursk/admin-panel.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/matursk/admin-panel/issues"
+  },
+  "homepage": "https://github.com/matursk/admin-panel#readme",
+  "dependencies": {
+    "firebase": "^12.3.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.13",
+    "autoprefixer": "^10.4.21",
+    "daisyui": "^5.1.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.7"
+  }
+}
