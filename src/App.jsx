@@ -242,6 +242,23 @@ function LectionsSection({ user }) {
     } catch (e) { setOrderStatus(`Failed to delete: ${e.message || e}`) }
   }
 
+  const renameLection = async (item) => {
+    try {
+      const current = String(item.title || '')
+      const next = prompt('New title', current)
+      if (next == null) return
+      const title = next.trim()
+      if (!title) { setOrderStatus('Title cannot be empty'); return }
+      setOrderStatus('Renaming...')
+      const ref = fsDoc(colRef, item.id)
+      await updateDoc(ref, { title })
+      setLections(prev => prev.map(x => x.id === item.id ? { ...x, title } : x))
+      setOrderStatus('Renamed')
+    } catch (e) {
+      setOrderStatus(`Rename failed: ${e.message || e}`)
+    }
+  }
+
   const [preview, setPreview] = useState(null)
   const openLection = async (id) => {
     try {
@@ -300,6 +317,7 @@ function LectionsSection({ user }) {
                   <div className="flex gap-1">
                     <button className="btn btn-sm" disabled={index===0} onClick={() => reorder(index, index-1)}>↑</button>
                     <button className="btn btn-sm" disabled={index===lections.length-1} onClick={() => reorder(index, index+1)}>↓</button>
+                    <button className="btn btn-sm" onClick={() => renameLection(item)}>Rename</button>
                     <button className="btn btn-sm" onClick={() => toggleLock(item)}>{item.locked ? 'Unlock' : 'Lock'}</button>
                     <button className="btn btn-sm btn-error" onClick={() => del(item)}>Delete</button>
                   </div>
