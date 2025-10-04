@@ -97,7 +97,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       if (start > last) result += renderInline(raw.slice(last, start))
       const alt = escapeHtml(m[1] || '')
       const src = escapeHtml(m[2] || '')
-      result += `<img src="${src}" alt="${alt}" style="max-width:100%;max-height:160px;height:auto;border-radius:.25rem;display:block;margin:.25rem 0;object-fit:contain;" />`
+      result += `<img src="${src}" alt="${alt}" style="max-width:100%;height:160px;border-radius:.25rem;display:block;margin:.25rem 0;object-fit:contain;" />`
       last = end
     }
     if (last < raw.length) result += renderInline(raw.slice(last))
@@ -117,6 +117,13 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       'fontSize','fontFamily','fontWeight','lineHeight','letterSpacing','textTransform','textIndent','textAlign','whiteSpace','tabSize'
     ]
     keys.forEach(k => { ov.style[k] = cs[k] })
+    // Mirror textarea borders/padding box metrics to avoid vertical drift
+    ov.style.borderTopWidth = cs.borderTopWidth
+    ov.style.borderBottomWidth = cs.borderBottomWidth
+    ov.style.borderTopStyle = 'solid'
+    ov.style.borderBottomStyle = 'solid'
+    ov.style.borderTopColor = 'transparent'
+    ov.style.borderBottomColor = 'transparent'
   })
 
   // Update overlay HTML on value changes and keep its height in sync with textarea's scrollHeight
@@ -217,7 +224,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       <div
         ref={overlayRef}
         aria-hidden="true"
-        className="absolute inset-0 overflow-auto rounded markdown-overlay"
+        className="absolute inset-0 overflow-hidden rounded markdown-overlay"
         style={{
           color: 'inherit',
           whiteSpace: 'pre-wrap',
