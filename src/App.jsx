@@ -440,7 +440,7 @@ function LectionsSection({ user }) {
                 <div className="flex flex-wrap gap-2 mb-2">
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
-                  <button type="button" className="btn btn-xs" onClick={insertLink}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('create')}>Link</button>
                   <button type="button" className="btn btn-xs" onClick={() => openImageDialog('create')}>Image</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
