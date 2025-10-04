@@ -123,6 +123,7 @@ function LectionsSection({ user }) {
   const [contentText, setContentText] = useState('')
   const [editModal, setEditModal] = useState(null) // { id, title, content }
   const [linkDialog, setLinkDialog] = useState(null) // { target: 'create'|'edit', text, url, start, end }
+  const [imageDialog, setImageDialog] = useState(null) // { target: 'create'|'edit' }
 
   const colRef = useMemo(() => collection(db, collectionName), [collectionName])
 
@@ -373,6 +374,41 @@ function LectionsSection({ user }) {
     setLinkDialog(null)
   }
 
+  const openImageDialog = (target) => setImageDialog({ target })
+
+  const confirmImageUpload = async (file) => {
+    try {
+      if (!file) return
+      const form = new FormData()
+      form.append('file', file)
+      const resp = await fetch('/api/upload-image', { method: 'POST', body: form })
+      if (!resp.ok) throw new Error(`Upload failed (${resp.status})`)
+      const data = await resp.json()
+      const md = `![](${data.url})`
+      if (imageDialog?.target === 'edit') {
+        const el = editContentRef.current
+        const src = String(editModal?.content || '')
+        const pos = el?.selectionStart ?? src.length
+        const before = src.slice(0, pos)
+        const after = src.slice(pos)
+        const next = `${before}${md}\n${after}`
+        setEditModal(m => ({ ...m, content: next }))
+        requestAnimationFrame(() => { el?.focus(); const np = (before + md + '\n').length; el?.setSelectionRange(np, np) })
+      } else {
+        const el = contentRef.current
+        const src = String(contentText || '')
+        const pos = el?.selectionStart ?? src.length
+        const before = src.slice(0, pos)
+        const after = src.slice(pos)
+        const next = `${before}${md}\n${after}`
+        setContentText(next)
+        requestAnimationFrame(() => { el?.focus(); const np = (before + md + '\n').length; el?.setSelectionRange(np, np) })
+      }
+    } finally {
+      setImageDialog(null)
+    }
+  }
+
   return (
     <div className="grid md:grid-cols-[2fr_1fr] gap-4 items-start mt-4">
       <div>
@@ -388,6 +424,7 @@ function LectionsSection({ user }) {
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
                   <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('create')}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openImageDialog('create')}>Image</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
                 </div>
@@ -486,6 +523,7 @@ function LectionsSection({ user }) {
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('_')}>Italic</button>
                   <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('edit')}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openImageDialog('edit')}>Image</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('# ', '')}>H1</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('## ', '')}>H2</button>
                 </div>
@@ -525,6 +563,26 @@ function LectionsSection({ user }) {
             </div>
           </div>
           <form method="dialog" className="modal-backdrop"><button onClick={()=>setLinkDialog(null)}>close</button></form>
+        </dialog>
+      )}
+
+      {imageDialog && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <h3 className="font-bold text-lg">Insert image</h3>
+            <div className="mt-3 space-y-3">
+              <div className="form-control">
+                <input type="file" accept="image/*"
+                       className="file-input file-input-bordered w-full"
+                       onChange={e=>confirmImageUpload(e.target.files?.[0] || null)} />
+              </div>
+              <div className="text-xs text-base-content/60">Images are uploaded to Firebase Storage and inserted as Markdown: <code>![](url)</code>.</div>
+              <div className="flex gap-2 justify-end">
+                <form method="dialog"><button className="btn" onClick={()=>setImageDialog(null)}>Cancel</button></form>
+              </div>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={()=>setImageDialog(null)}>close</button></form>
         </dialog>
       )}
     </div>

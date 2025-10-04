@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { initializeFirestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 
 // Prefer external file if present; fallback to inline constants
 // eslint-disable-next-line import/no-unresolved
@@ -17,5 +18,6 @@ const firebaseConfig = externalConfig || {
 const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = initializeFirestore(app, { experimentalForceLongPolling: true })
+export const storage = getStorage(app)
 
 
