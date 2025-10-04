@@ -2,9 +2,7 @@ import React, { forwardRef, useEffect, useRef, useState } from 'react'
 
 /**
  * MarkdownTextarea
- * A single-field textarea that shows inline Markdown formatting while typing,
- * Discord-style. It renders a highlighted layer behind a transparent textarea,
- * grays out formatting markers (**, _, ~~) and styles the inner text.
+ * mode: 'inline' | 'plain' (default 'plain')
  */
 const MarkdownTextarea = forwardRef(function MarkdownTextarea(
   {
@@ -12,18 +10,36 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     onChange,
     placeholder,
     className = '',
-    textareaClassName = 'textarea textarea-bordered min-h-60 bg-transparent',
+    textareaClassName = 'textarea textarea-bordered min-h-60',
     id,
     name,
     required,
+    mode = 'plain',
   },
   forwardedRef,
 ) {
+  // Plain mode: no overlay, just a regular textarea
+  if (mode !== 'inline') {
+    return (
+      <textarea
+        id={id}
+        name={name}
+        ref={forwardedRef}
+        className={textareaClassName + ' w-full'}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        required={required}
+      />
+    )
+  }
+
+  // Inline mode below
   const localTextareaRef = useRef(null)
   const textareaRef = forwardedRef || localTextareaRef
   const overlayRef = useRef(null)
   const [caretIndex, setCaretIndex] = useState(0)
-  const imageRangesRef = useRef([]) // [{start,end}]
+  const imageRangesRef = useRef([])
 
   const emitChange = (nextValue, nextCaret) => {
     if (typeof onChange === 'function') {
@@ -35,17 +51,13 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     }
   }
 
-  // Escape HTML to safely inject highlighted HTML
-  const escapeHtml = (text) => {
-    return String(text)
+  const escapeHtml = (text) => String(text)
       .replaceAll(/&/g, '&amp;')
       .replaceAll(/</g, '&lt;')
       .replaceAll(/>/g, '&gt;')
       .replaceAll(/"/g, '&quot;')
       .replaceAll(/'/g, '&#39;')
-  }
 
-  // Render non-image markdown inline (headings, bold, etc.)
   const renderInline = (rawText) => {
     let html = escapeHtml(rawText)
     html = html.replace(/^(#{1,6})\s+(.+)$/gm, (_m, hashes, content) => {
@@ -67,7 +79,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     return html
   }
 
-  // Compute image token ranges whenever value changes
   useEffect(() => {
     const ranges = []
     const imgRe = /!\[[^\]]*\]\([^\)\s]+\)/g
@@ -91,12 +102,9 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
   const snapCaretFrom = (pos, bias = 'forward') => {
     const r = findRangeContaining(pos)
     if (!r) return pos
-    // Prefer after the token
-    let next = bias === 'backward' ? r.start : r.end + 1
-    return next
+    return bias === 'backward' ? r.start : r.end + 1
   }
 
-  // Highlight markdown: render image tokens as literal text to keep line metrics aligned
   const highlightMarkdown = (raw) => {
     const imgRe = /!\[([^\]]*)\]\(([^)\s]+)\)/g
     let result = ''
@@ -114,7 +122,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     return result
   }
 
-  // Sync overlay typography with the textarea so text aligns closely
   useEffect(() => {
     const ta = textareaRef.current
     const ov = overlayRef.current
@@ -125,7 +132,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       'fontSize','fontFamily','fontWeight','lineHeight','letterSpacing','textTransform','textIndent','textAlign','whiteSpace','tabSize'
     ]
     keys.forEach(k => { ov.style[k] = cs[k] })
-    // Mirror textarea borders/padding box metrics to avoid vertical drift
     ov.style.borderTopWidth = cs.borderTopWidth
     ov.style.borderBottomWidth = cs.borderBottomWidth
     ov.style.borderTopStyle = 'solid'
@@ -134,7 +140,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     ov.style.borderBottomColor = 'transparent'
   })
 
-  // Update overlay HTML on value changes and keep its height in sync with textarea's scrollHeight
   useEffect(() => {
     const ta = textareaRef.current
     const ov = overlayRef.current
@@ -145,7 +150,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     }
   }, [value, caretIndex])
 
-  // Scroll sync
   useEffect(() => {
     const ta = textareaRef.current
     const ov = overlayRef.current
@@ -162,9 +166,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const el = textareaRef.current
     if (!el) return
     const next = snapCaretFrom(el.selectionStart ?? 0)
-    if (next !== (el.selectionStart ?? 0)) {
-      el.setSelectionRange(next, next)
-    }
+    if (next !== (el.selectionStart ?? 0)) el.setSelectionRange(next, next)
     setCaretIndex(next)
   }
 
@@ -174,7 +176,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const start = el.selectionStart ?? 0
     const end = el.selectionEnd ?? start
 
-    // Backspace/Delete remove the entire image token when at its boundary
     if (e.key === 'Backspace' && start === end) {
       const prev = start - 1
       const r = findRangeContaining(prev)
@@ -194,8 +195,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         return
       }
     }
-
-    // Enter: if caret sits inside an image token, move to boundary and insert newline
     if (e.key === 'Enter') {
       const inside = findRangeContaining(start)
       if (inside) {
@@ -206,10 +205,8 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         emitChange(next, pos + 1)
         return
       }
-      return
     }
 
-    // Block typing inside tokens by snapping to boundary and letting the key proceed
     const insideStart = findRangeContaining(start)
     const insideEnd = findRangeContaining(end - 1)
     const overlapsToken = insideStart || insideEnd
@@ -257,7 +254,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         id={id}
         name={name}
         ref={textareaRef}
-        className={textareaClassName + ' w-full'}
+        className={textareaClassName + ' w-full bg-transparent'}
         placeholder={placeholder}
         value={value}
         onChange={(e) => { onChange && onChange(e); setCaretIndex(e.target.selectionStart ?? 0) }}
@@ -266,7 +263,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         onKeyUp={handleSelect}
         onClick={handleSelect}
         required={required}
-        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', background: 'transparent', zIndex: 1 }}
+        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', zIndex: 1 }}
       />
     </div>
   )
