@@ -25,6 +25,16 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
   const [caretIndex, setCaretIndex] = useState(0)
   const imageRangesRef = useRef([]) // [{start,end}]
 
+  const emitChange = (nextValue, nextCaret) => {
+    if (typeof onChange === 'function') {
+      onChange({ target: { value: nextValue } })
+    }
+    const el = textareaRef.current
+    if (el && Number.isFinite(nextCaret)) {
+      requestAnimationFrame(() => { el.setSelectionRange(nextCaret, nextCaret) })
+    }
+  }
+
   // Escape HTML to safely inject highlighted HTML
   const escapeHtml = (text) => {
     return String(text)
@@ -164,11 +174,45 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const start = el.selectionStart ?? 0
     const end = el.selectionEnd ?? start
 
-    // Block edits inside image tokens
+    // Backspace/Delete remove the entire image token when at its boundary
+    if (e.key === 'Backspace' && start === end) {
+      const prev = start - 1
+      const r = findRangeContaining(prev)
+      if (r && prev >= r.start && prev <= r.end) {
+        e.preventDefault()
+        const nextValue = String(value || '').slice(0, r.start) + String(value || '').slice(r.end + 1)
+        emitChange(nextValue, r.start)
+        return
+      }
+    }
+    if (e.key === 'Delete' && start === end) {
+      const r = findRangeContaining(start)
+      if (r) {
+        e.preventDefault()
+        const nextValue = String(value || '').slice(0, r.start) + String(value || '').slice(r.end + 1)
+        emitChange(nextValue, r.start)
+        return
+      }
+    }
+
+    // Enter: if caret sits inside an image token, move to boundary and insert newline
+    if (e.key === 'Enter') {
+      const inside = findRangeContaining(start)
+      if (inside) {
+        e.preventDefault()
+        const pos = inside.end + 1
+        const src = String(value || '')
+        const next = src.slice(0, pos) + '\n' + src.slice(pos)
+        emitChange(next, pos + 1)
+        return
+      }
+      return
+    }
+
+    // Block typing inside tokens by snapping to boundary and letting the key proceed
     const insideStart = findRangeContaining(start)
     const insideEnd = findRangeContaining(end - 1)
     const overlapsToken = insideStart || insideEnd
-
     const navigationKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
 
     if (navigationKeys.includes(e.key)) {
@@ -185,27 +229,11 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     }
 
     if (overlapsToken) {
-      e.preventDefault()
       const next = snapCaretFrom(start, 'forward')
-      el.setSelectionRange(next, next)
-      setCaretIndex(next)
-      return
-    }
-
-    if (e.key === 'Backspace') {
-      const prev = start - 1
-      if (findRangeContaining(prev)) {
+      if (next !== start) {
         e.preventDefault()
-        const r = findRangeContaining(prev)
-        if (r) {
-          const next = r.start
-          el.setSelectionRange(next, next)
-          setCaretIndex(next)
-        }
-      }
-    } else if (e.key === 'Delete') {
-      if (findRangeContaining(start)) {
-        e.preventDefault()
+        el.setSelectionRange(next, next)
+        setCaretIndex(next)
       }
     }
   }
