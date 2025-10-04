@@ -113,8 +113,9 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       const start = m.index || 0
       const end = start + m[0].length
       if (start > last) result += renderInline(raw.slice(last, start))
-      const token = escapeHtml(m[0])
-      result += `<span style="opacity:.85">${token}</span>`
+      const alt = escapeHtml(m[1] || '')
+      const src = escapeHtml(m[2] || '')
+      result += `<img src="${src}" alt="${alt}" style="height:1.25em;display:inline-block;vertical-align:text-bottom;margin:0 .25em;border-radius:.125rem;object-fit:contain;" />`
       last = end
     }
     if (last < raw.length) result += renderInline(raw.slice(last))
@@ -240,7 +241,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       <div
         ref={overlayRef}
         aria-hidden="true"
-        className="absolute inset-0 overflow-hidden rounded markdown-overlay"
+        className="absolute inset-0 overflow-auto rounded markdown-overlay"
         style={{
           color: 'inherit',
           whiteSpace: 'pre-wrap',
