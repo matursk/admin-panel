@@ -31,6 +31,8 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       .replaceAll(/&/g, '&amp;')
       .replaceAll(/</g, '&lt;')
       .replaceAll(/>/g, '&gt;')
+      .replaceAll(/"/g, '&quot;')
+      .replaceAll(/'/g, '&#39;')
   }
 
   // Render non-image markdown inline (headings, bold, etc.)
@@ -112,7 +114,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const cs = getComputedStyle(ta)
     const keys = [
       'paddingTop','paddingRight','paddingBottom','paddingLeft',
-      'fontSize','fontFamily','fontWeight','lineHeight','letterSpacing','textTransform','textIndent','textAlign','whiteSpace'
+      'fontSize','fontFamily','fontWeight','lineHeight','letterSpacing','textTransform','textIndent','textAlign','whiteSpace','tabSize'
     ]
     keys.forEach(k => { ov.style[k] = cs[k] })
   })
@@ -122,10 +124,14 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const ta = textareaRef.current
     const ov = overlayRef.current
     if (!ov) return
-    ov.innerHTML = highlightMarkdown(value || '')
+    // Ensure a trailing newline in textarea value so overlay's last block line has height
+    const safe = String(value || '')
+    const withNl = safe.endsWith('\n') ? safe : (safe + '\n')
+    ov.innerHTML = highlightMarkdown(withNl)
     if (ta) {
       // Ensure overlay covers the entire content area
-      ov.style.minHeight = ta.scrollHeight + 'px'
+      const pad = Math.max(0, ta.scrollHeight)
+      ov.style.minHeight = pad + 'px'
     }
   }, [value, caretIndex])
 
@@ -219,6 +225,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
           // Match DaisyUI textarea background a bit darker for contrast
           background: 'transparent',
           pointerEvents: 'none',
+          zIndex: 0,
         }}
       />
       <textarea
@@ -234,7 +241,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         onKeyUp={handleSelect}
         onClick={handleSelect}
         required={required}
-        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', background: 'transparent' }}
+        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', background: 'transparent', zIndex: 1 }}
       />
     </div>
   )
