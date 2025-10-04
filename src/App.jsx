@@ -438,9 +438,7 @@ function LectionsSection({ user }) {
                 <input ref={titleRef} className="input input-bordered" required />
               </FormField>
               <FormField className="md:col-span-2" title="Content (Markdown)" helper="Images embed inline; saved as Markdown.">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <button type="button" className="btn btn-xs" onClick={() => openImageDialog('create')}>Image</button>
-                </div>
+                <div className="flex flex-wrap gap-2 mb-2 text-xs text-base-content/60">Images auto-shrink to 4 lines.</div>
                 <RichMarkdownEditor
                   value={contentText}
                   onChange={e=>setContentText(e.target.value)}
@@ -532,9 +530,7 @@ function LectionsSection({ user }) {
                 <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
               </FormField>
               <FormField title="Content (Markdown)" helper="Images embed inline; saved as Markdown.">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <button type="button" className="btn btn-xs" onClick={() => openImageDialog('edit')}>Image</button>
-                </div>
+                <div className="flex flex-wrap gap-2 mb-2 text-xs text-base-content/60">Images auto-shrink to 4 lines.</div>
                 <RichMarkdownEditor
                   value={editModal.content}
                   onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
