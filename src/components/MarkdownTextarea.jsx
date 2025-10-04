@@ -23,6 +23,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
   const textareaRef = forwardedRef || localTextareaRef
   const overlayRef = useRef(null)
   const [caretIndex, setCaretIndex] = useState(0)
+  const imageRangesRef = useRef([]) // [{start,end}]
 
   // Escape HTML to safely inject highlighted HTML
   const escapeHtml = (text) => {
@@ -54,7 +55,37 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     return html
   }
 
-  // Highlight markdown with inline images when caret is not inside the image token
+  // Compute image token ranges whenever value changes
+  useEffect(() => {
+    const ranges = []
+    const imgRe = /!\[[^\]]*\]\([^\)\s]+\)/g
+    for (const m of String(value || '').matchAll(imgRe)) {
+      const start = m.index || 0
+      const end = start + m[0].length - 1
+      ranges.push({ start, end })
+    }
+    imageRangesRef.current = ranges
+  }, [value])
+
+  const findRangeContaining = (pos) => {
+    const ranges = imageRangesRef.current
+    for (let i = 0; i < ranges.length; i++) {
+      const r = ranges[i]
+      if (pos >= r.start && pos <= r.end) return r
+    }
+    return null
+  }
+
+  const snapCaretFrom = (pos, bias = 'forward') => {
+    const r = findRangeContaining(pos)
+    if (!r) return pos
+    // Prefer after the token
+    let next = bias === 'backward' ? r.start : r.end + 1
+    // If the next char is not a newline, still snap right after the token
+    return next
+  }
+
+  // Highlight markdown with inline images (always render images visually)
   const highlightMarkdown = (raw) => {
     const imgRe = /!\[([^\]]*)\]\(([^)\s]+)\)/g
     let result = ''
@@ -63,16 +94,9 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       const start = m.index || 0
       const end = start + m[0].length
       if (start > last) result += renderInline(raw.slice(last, start))
-      const caretInside = caretIndex >= start && caretIndex <= end
-      if (caretInside) {
-        const escaped = escapeHtml(m[0])
-        // Render token and add spacer so the line grows below caret
-        result += `<span style="opacity:.85">${escaped}</span><div style="height:160px"></div>`
-      } else {
-        const alt = escapeHtml(m[1] || '')
-        const src = escapeHtml(m[2] || '')
-        result += `<img src="${src}" alt="${alt}" style="max-width:100%;max-height:160px;height:auto;border-radius:.25rem;display:block;margin:.25rem 0;object-fit:contain;" />`
-      }
+      const alt = escapeHtml(m[1] || '')
+      const src = escapeHtml(m[2] || '')
+      result += `<img src="${src}" alt="${alt}" style="max-width:100%;max-height:160px;height:auto;border-radius:.25rem;display:block;margin:.25rem 0;object-fit:contain;" />`
       last = end
     }
     if (last < raw.length) result += renderInline(raw.slice(last))
@@ -114,6 +138,70 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     return () => ta.removeEventListener('scroll', onScroll)
   }, [])
 
+  const handleSelect = () => {
+    const el = textareaRef.current
+    if (!el) return
+    const next = snapCaretFrom(el.selectionStart ?? 0)
+    if (next !== (el.selectionStart ?? 0)) {
+      el.setSelectionRange(next, next)
+    }
+    setCaretIndex(next)
+  }
+
+  const handleKeyDown = (e) => {
+    const el = textareaRef.current
+    if (!el) return
+    const start = el.selectionStart ?? 0
+    const end = el.selectionEnd ?? start
+
+    // Block edits inside image tokens
+    const insideStart = findRangeContaining(start)
+    const insideEnd = findRangeContaining(end - 1)
+    const overlapsToken = insideStart || insideEnd
+
+    const navigationKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
+
+    if (navigationKeys.includes(e.key)) {
+      // Snap arrows to token boundaries
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const bias = e.key === 'ArrowLeft' ? 'backward' : 'forward'
+        const next = snapCaretFrom(start, bias)
+        if (next !== start) {
+          e.preventDefault()
+          el.setSelectionRange(next, next)
+          setCaretIndex(next)
+        }
+      }
+      return
+    }
+
+    if (overlapsToken) {
+      e.preventDefault()
+      const next = snapCaretFrom(start, 'forward')
+      el.setSelectionRange(next, next)
+      setCaretIndex(next)
+      return
+    }
+
+    // Backspace/Delete adjacent to a token: prevent deleting inside
+    if (e.key === 'Backspace') {
+      const prev = start - 1
+      if (findRangeContaining(prev)) {
+        e.preventDefault()
+        const r = findRangeContaining(prev)
+        if (r) {
+          const next = r.start
+          el.setSelectionRange(next, next)
+          setCaretIndex(next)
+        }
+      }
+    } else if (e.key === 'Delete') {
+      if (findRangeContaining(start)) {
+        e.preventDefault()
+      }
+    }
+  }
+
   return (
     <div className={`relative w-full ${className}`}>
       <div
@@ -137,9 +225,10 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         placeholder={placeholder}
         value={value}
         onChange={(e) => { onChange && onChange(e); setCaretIndex(e.target.selectionStart ?? 0) }}
-        onSelect={() => { const el = textareaRef.current; if (el) setCaretIndex(el.selectionStart ?? 0) }}
-        onKeyUp={() => { const el = textareaRef.current; if (el) setCaretIndex(el.selectionStart ?? 0) }}
-        onClick={() => { const el = textareaRef.current; if (el) setCaretIndex(el.selectionStart ?? 0) }}
+        onSelect={handleSelect}
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleSelect}
+        onClick={handleSelect}
         required={required}
         style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', background: 'transparent' }}
       />
