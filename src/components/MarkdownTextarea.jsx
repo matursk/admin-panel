@@ -115,7 +115,8 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       if (start > last) result += renderInline(raw.slice(last, start))
       const alt = escapeHtml(m[1] || '')
       const src = escapeHtml(m[2] || '')
-      result += `<img src="${src}" alt="${alt}" style="height:1.25em;display:inline-block;vertical-align:text-bottom;margin:0 .25em;border-radius:.125rem;object-fit:contain;" />`
+      // Block preview image, normal size within field
+      result += `<img src="${src}" alt="${alt}" style="max-width:100%;height:auto;max-height:320px;display:block;margin:.5rem 0;border-radius:.25rem;object-fit:contain;" />`
       last = end
     }
     if (last < raw.length) result += renderInline(raw.slice(last))
@@ -146,9 +147,13 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const ov = overlayRef.current
     if (!ov) return
     ov.innerHTML = highlightMarkdown(String(value || ''))
-    if (ta) {
-      ov.style.minHeight = ta.scrollHeight + 'px'
-    }
+    // Resize textarea to match overlay content height
+    requestAnimationFrame(() => {
+      if (!ta || !ov) return
+      const desired = Math.max(ta.scrollHeight, ov.scrollHeight)
+      ta.style.height = desired + 'px'
+      ov.style.minHeight = desired + 'px'
+    })
   }, [value, caretIndex])
 
   useEffect(() => {
@@ -264,7 +269,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         onKeyUp={handleSelect}
         onClick={handleSelect}
         required={required}
-        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', zIndex: 1 }}
+        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', zIndex: 1, resize: 'none' }}
       />
     </div>
   )
