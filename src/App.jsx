@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import FormField from './components/FormField.jsx'
+import MarkdownTextarea from './components/MarkdownTextarea.jsx'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -358,7 +359,7 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input ref={titleRef} className="input input-bordered" required />
               </FormField>
-              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Use toolbar for bold, italic, links; supports Markdown.">
+              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Inline preview appears in the same field; markers are grayed out.">
                 <div className="flex flex-wrap gap-2 mb-2">
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
@@ -366,15 +367,13 @@ function LectionsSection({ user }) {
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
                 </div>
-                <div className="grid md:grid-cols-2 gap-3">
-                  <textarea ref={contentRef} className="textarea textarea-bordered min-h-60" value={contentText} onChange={e=>setContentText(e.target.value)} placeholder="Type Markdown text here..." required />
-                  <div className="rounded border border-base-300 p-3 bg-base-300/40 overflow-auto min-h-60">
-                    <div className="text-xs uppercase tracking-wide text-base-content/50 mb-2">Preview</div>
-                    <div className="prose prose-invert max-w-none text-base-content/80">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{contentText || '*Nothing to preview*'}</ReactMarkdown>
-                    </div>
-                  </div>
-                </div>
+                <MarkdownTextarea
+                  ref={contentRef}
+                  value={contentText}
+                  onChange={e=>setContentText(e.target.value)}
+                  placeholder="Type Markdown text here..."
+                  required
+                />
               </FormField>
               <div className="flex items-end gap-3 md:col-span-2">
                 <button className="btn btn-primary" type="submit">Upload</button>
@@ -459,16 +458,11 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
               </FormField>
-              <FormField title="Content (Markdown)">
-                <div className="grid md:grid-cols-2 gap-3">
-                  <textarea className="textarea textarea-bordered min-h-60" value={editModal.content} onChange={e=>setEditModal(m=>({...m, content: e.target.value}))} />
-                  <div className="rounded border border-base-300 p-3 bg-base-300/40 overflow-auto min-h-60">
-                    <div className="text-xs uppercase tracking-wide text-base-content/50 mb-2">Preview</div>
-                    <div className="prose prose-invert max-w-none text-base-content/80">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{editModal.content || '*Nothing to preview*'}</ReactMarkdown>
-                    </div>
-                  </div>
-                </div>
+              <FormField title="Content (Markdown)" helper="Inline preview appears as you type.">
+                <MarkdownTextarea
+                  value={editModal.content}
+                  onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
+                />
               </FormField>
               <div className="flex gap-2 items-center">
                 <button className="btn btn-primary" onClick={saveEditLection}>Save</button>
