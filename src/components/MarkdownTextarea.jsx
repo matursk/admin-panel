@@ -111,11 +111,11 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
   }, [])
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative w-full ${className}`}>
       <div
         ref={overlayRef}
         aria-hidden="true"
-        className="absolute inset-0 overflow-auto rounded"
+        className="absolute inset-0 overflow-auto rounded markdown-overlay"
         style={{
           color: 'inherit',
           whiteSpace: 'pre-wrap',
@@ -129,7 +129,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         id={id}
         name={name}
         ref={textareaRef}
-        className={textareaClassName}
+        className={textareaClassName + ' w-full'}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
