@@ -392,7 +392,8 @@ function LectionsSection({ user }) {
         const before = src.slice(0, pos)
         const after = src.slice(pos)
         // Ensure there is a blank line after the image token so caret sits below the preview
-        const spacer = after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n')
+        const needed = '\n\n\n\n\n\n' // approximate 6 lines to clear preview height
+        const spacer = after.startsWith('\n') ? needed : ('\n' + needed)
         const next = `${before}${md}${spacer}${after}`
         setEditModal(m => ({ ...m, content: next }))
         requestAnimationFrame(() => { el?.focus(); const np = (before + md + spacer).length; el?.setSelectionRange(np, np) })
@@ -402,7 +403,8 @@ function LectionsSection({ user }) {
         const pos = el?.selectionStart ?? src.length
         const before = src.slice(0, pos)
         const after = src.slice(pos)
-        const spacer = after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n')
+        const needed = '\n\n\n\n\n\n'
+        const spacer = after.startsWith('\n') ? needed : ('\n' + needed)
         const next = `${before}${md}${spacer}${after}`
         setContentText(next)
         requestAnimationFrame(() => { el?.focus(); const np = (before + md + spacer).length; el?.setSelectionRange(np, np) })

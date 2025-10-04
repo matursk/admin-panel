@@ -66,7 +66,8 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       const caretInside = caretIndex >= start && caretIndex <= end
       if (caretInside) {
         const escaped = escapeHtml(m[0])
-        result += `<span style="opacity:.85">${escaped}</span>`
+        // Render token and add spacer so the line grows below caret
+        result += `<span style="opacity:.85">${escaped}</span><div style="height:160px"></div>`
       } else {
         const alt = escapeHtml(m[1] || '')
         const src = escapeHtml(m[2] || '')
