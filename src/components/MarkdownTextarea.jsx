@@ -134,7 +134,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
         value={value}
         onChange={onChange}
         required={required}
-        style={{ position: 'relative', color: 'transparent', caretColor: 'inherit', background: 'transparent' }}
+        style={{ position: 'relative', color: 'transparent', caretColor: '#ffffff', background: 'transparent' }}
       />
     </div>
   )

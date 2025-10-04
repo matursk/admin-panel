@@ -460,11 +460,13 @@ function LectionsSection({ user }) {
                     {index + 1}. {item.title || '(untitled)'} <span className="text-sm text-base-content/50">#{item.id}</span> {item.locked ? '🔒' : ''}
                   </div>
                   <div className="flex gap-1">
-                    <button className="btn btn-sm" disabled={index===0} onClick={() => reorder(index, index-1)}>↑</button>
-                    <button className="btn btn-sm" disabled={index===lections.length-1} onClick={() => reorder(index, index+1)}>↓</button>
-                    <button className="btn btn-sm" onClick={() => editLection(item.id)}>Edit</button>
-                    <button className="btn btn-sm" onClick={() => toggleLock(item)}>{item.locked ? 'Unlock' : 'Lock'}</button>
-                    <button className="btn btn-sm btn-error" onClick={() => del(item)}>Delete</button>
+                    <button className="btn btn-sm" disabled={index===0} onClick={() => reorder(index, index-1)} title="Move up" aria-label="Move up">↑</button>
+                    <button className="btn btn-sm" disabled={index===lections.length-1} onClick={() => reorder(index, index+1)} title="Move down" aria-label="Move down">↓</button>
+                    <button className="btn btn-sm" onClick={() => editLection(item.id)} title="Edit" aria-label="Edit">Edit</button>
+                    <button className="btn btn-sm" onClick={() => toggleLock(item)} title={item.locked ? 'Unlock' : 'Lock'} aria-label={item.locked ? 'Unlock' : 'Lock'}>
+                      {item.locked ? '🔓' : '🔒'}
+                    </button>
+                    <button className="btn btn-sm btn-error" onClick={() => del(item)} title="Delete" aria-label="Delete">🗑️</button>
                   </div>
                 </li>
               ))}
