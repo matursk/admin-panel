@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import FormField from './components/FormField.jsx'
 import MarkdownTextarea from './components/MarkdownTextarea.jsx'
-import RichMarkdownEditor from './components/RichMarkdownEditor.jsx'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -437,12 +436,20 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input ref={titleRef} className="input input-bordered" required />
               </FormField>
-              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Images embed inline; saved as Markdown.">
-                <div className="flex flex-wrap gap-2 mb-2 text-xs text-base-content/60">Images auto-shrink to 4 lines.</div>
-                <RichMarkdownEditor
+              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Use toolbar for bold, italic, links; classic text input.">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('create')}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
+                </div>
+                <MarkdownTextarea
+                  ref={contentRef}
                   value={contentText}
                   onChange={e=>setContentText(e.target.value)}
-                  className="h-64 overflow-auto"
+                  placeholder="Type Markdown text here..."
+                  required
                 />
               </FormField>
               <div className="flex items-end gap-3 md:col-span-2">
@@ -529,12 +536,18 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
               </FormField>
-              <FormField title="Content (Markdown)" helper="Images embed inline; saved as Markdown.">
-                <div className="flex flex-wrap gap-2 mb-2 text-xs text-base-content/60">Images auto-shrink to 4 lines.</div>
-                <RichMarkdownEditor
+              <FormField title="Content (Markdown)" helper="Use toolbar for bold, italic, links; classic text input.">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('**')}>Bold</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('_')}>Italic</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('edit')}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('# ', '')}>H1</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('## ', '')}>H2</button>
+                </div>
+                <MarkdownTextarea
+                  ref={editContentRef}
                   value={editModal.content}
                   onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
-                  className="h-64 overflow-auto"
                 />
               </FormField>
               <div className="flex gap-2 items-center">
