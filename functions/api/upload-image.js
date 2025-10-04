@@ -20,8 +20,8 @@ export const onRequestPost = async ({ request, env }) => {
       },
     })
 
-    // Hardcoded public base URL for R2 assets
-    const BASE = 'https://e2c2a141f100a11f028035c83e262963.r2.cloudflarestorage.com/images'
+    // Hardcoded public base URL for R2 assets (custom domain)
+    const BASE = 'https://images.matur.sk'
     const base = BASE.replace(/\/$/, '')
     const url = `${base}/${key}`
 
