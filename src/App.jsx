@@ -391,18 +391,21 @@ function LectionsSection({ user }) {
         const pos = el?.selectionStart ?? src.length
         const before = src.slice(0, pos)
         const after = src.slice(pos)
-        const next = `${before}${md}\n${after}`
+        // Ensure there is a blank line after the image token so caret sits below the preview
+        const spacer = after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n')
+        const next = `${before}${md}${spacer}${after}`
         setEditModal(m => ({ ...m, content: next }))
-        requestAnimationFrame(() => { el?.focus(); const np = (before + md + '\n').length; el?.setSelectionRange(np, np) })
+        requestAnimationFrame(() => { el?.focus(); const np = (before + md + spacer).length; el?.setSelectionRange(np, np) })
       } else {
         const el = contentRef.current
         const src = String(contentText || '')
         const pos = el?.selectionStart ?? src.length
         const before = src.slice(0, pos)
         const after = src.slice(pos)
-        const next = `${before}${md}\n${after}`
+        const spacer = after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n')
+        const next = `${before}${md}${spacer}${after}`
         setContentText(next)
-        requestAnimationFrame(() => { el?.focus(); const np = (before + md + '\n').length; el?.setSelectionRange(np, np) })
+        requestAnimationFrame(() => { el?.focus(); const np = (before + md + spacer).length; el?.setSelectionRange(np, np) })
       }
     } finally {
       setImageDialog(null)

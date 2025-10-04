@@ -70,7 +70,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       } else {
         const alt = escapeHtml(m[1] || '')
         const src = escapeHtml(m[2] || '')
-        result += `<img src="${src}" alt="${alt}" style="max-width:100%;height:auto;border-radius:.25rem;display:block;margin:.25rem 0;" />`
+        result += `<img src="${src}" alt="${alt}" style="max-width:100%;max-height:160px;height:auto;border-radius:.25rem;display:block;margin:.25rem 0;object-fit:contain;" />`
       }
       last = end
     }
