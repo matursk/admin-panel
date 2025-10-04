@@ -86,7 +86,7 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     return next
   }
 
-  // Highlight markdown with inline images (always render images visually)
+  // Highlight markdown: render image tokens as literal text to keep line metrics aligned
   const highlightMarkdown = (raw) => {
     const imgRe = /!\[([^\]]*)\]\(([^)\s]+)\)/g
     let result = ''
@@ -95,14 +95,12 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       const start = m.index || 0
       const end = start + m[0].length
       if (start > last) result += renderInline(raw.slice(last, start))
-      const alt = escapeHtml(m[1] || '')
-      const src = escapeHtml(m[2] || '')
-      result += `<img src="${src}" alt="${alt}" style="max-width:100%;height:160px;border-radius:.25rem;display:block;margin:.25rem 0;object-fit:contain;" />`
+      const token = escapeHtml(m[0])
+      result += `<span style="opacity:.85">${token}</span>`
       last = end
     }
     if (last < raw.length) result += renderInline(raw.slice(last))
     if (result.length === 0) result = '\u200b'
-    if (!result.endsWith('\n')) result += '\n'
     return result
   }
 
@@ -131,14 +129,9 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const ta = textareaRef.current
     const ov = overlayRef.current
     if (!ov) return
-    // Ensure a trailing newline in textarea value so overlay's last block line has height
-    const safe = String(value || '')
-    const withNl = safe.endsWith('\n') ? safe : (safe + '\n')
-    ov.innerHTML = highlightMarkdown(withNl)
+    ov.innerHTML = highlightMarkdown(String(value || ''))
     if (ta) {
-      // Ensure overlay covers the entire content area
-      const pad = Math.max(0, ta.scrollHeight)
-      ov.style.minHeight = pad + 'px'
+      ov.style.minHeight = ta.scrollHeight + 'px'
     }
   }, [value, caretIndex])
 
@@ -179,7 +172,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     const navigationKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
 
     if (navigationKeys.includes(e.key)) {
-      // Snap arrows to token boundaries
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const bias = e.key === 'ArrowLeft' ? 'backward' : 'forward'
         const next = snapCaretFrom(start, bias)
@@ -200,7 +192,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       return
     }
 
-    // Backspace/Delete adjacent to a token: prevent deleting inside
     if (e.key === 'Backspace') {
       const prev = start - 1
       if (findRangeContaining(prev)) {
@@ -229,7 +220,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
           color: 'inherit',
           whiteSpace: 'pre-wrap',
           wordWrap: 'break-word',
-          // Match DaisyUI textarea background a bit darker for contrast
           background: 'transparent',
           pointerEvents: 'none',
           zIndex: 0,
