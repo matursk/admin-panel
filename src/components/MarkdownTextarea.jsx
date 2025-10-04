@@ -113,10 +113,9 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
       const start = m.index || 0
       const end = start + m[0].length
       if (start > last) result += renderInline(raw.slice(last, start))
-      const alt = escapeHtml(m[1] || '')
-      const src = escapeHtml(m[2] || '')
-      // Block preview image, normal size within field
-      result += `<img src="${src}" alt="${alt}" style="max-width:100%;height:auto;max-height:320px;display:block;margin:.5rem 0;border-radius:.25rem;object-fit:contain;" />`
+      // Do not render images; keep token visible
+      const token = escapeHtml(m[0])
+      result += `<span style="opacity:.85">${token}</span>`
       last = end
     }
     if (last < raw.length) result += renderInline(raw.slice(last))
