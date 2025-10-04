@@ -31,6 +31,37 @@ function cn(...classes) {
   return classes.filter(Boolean).join(' ')
 }
 
+// Simple UTF-8 base64 helpers to tag and move formatted content safely
+function encodeB64Utf8(text) {
+  try {
+    const enc = new TextEncoder().encode(text)
+    let binary = ''
+    const chunkSize = 0x8000
+    for (let i = 0; i < enc.length; i += chunkSize) {
+      const chunk = enc.subarray(i, i + chunkSize)
+      binary += String.fromCharCode.apply(null, chunk)
+    }
+    return 'b64:' + btoa(binary)
+  } catch {
+    // Fallback
+    try { return 'b64:' + btoa(unescape(encodeURIComponent(text))) } catch { return text }
+  }
+}
+
+function decodeB64Utf8Maybe(text) {
+  if (typeof text !== 'string') return ''
+  if (!text.startsWith('b64:')) return text
+  const raw = text.slice(4)
+  try {
+    const binary = atob(raw)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+  } catch {
+    try { return decodeURIComponent(escape(atob(raw))) } catch { return text }
+  }
+}
+
 function useAuth() {
   const [user, setUser] = useState(null)
   useEffect(() => {
@@ -82,10 +113,11 @@ function LectionsSection({ user }) {
   const [env, setEnv] = useState('')
   const [status, setStatus] = useState('')
   const [orderStatus, setOrderStatus] = useState('')
-  const [encoding, setEncoding] = useState('utf-8')
   const [lections, setLections] = useState([])
   const titleRef = useRef(null)
-  const fileRef = useRef(null)
+  const contentRef = useRef(null)
+  const [contentText, setContentText] = useState('')
+  const [editModal, setEditModal] = useState(null) // { id, title, content }
 
   const colRef = useMemo(() => collection(db, collectionName), [collectionName])
 
@@ -136,29 +168,11 @@ function LectionsSection({ user }) {
     if (user.uid !== ADMIN_UID) { setStatus('Only the admin account can upload'); return }
 
     const title = (titleRef.current?.value || '').trim()
-    const file = fileRef.current?.files?.[0]
-    if (!title || !file) { setStatus('Fill in all fields'); return }
-
-    const MAX_DOC_BYTES = 900 * 1024
-    if (file.size > MAX_DOC_BYTES) {
-      const kb = Math.round(file.size / 1024)
-      setStatus(`File too large (${kb} KB). Firestore doc limit is ~1MB.`)
-      return
-    }
+    const rawText = contentText || ''
+    if (!title || !rawText.trim()) { setStatus('Fill in all fields'); return }
     try {
-      setStatus('Reading file...')
-      const buffer = await file.arrayBuffer()
-      let content = ''
-      try {
-        const decoder = new TextDecoder(encoding, { fatal: false })
-        content = decoder.decode(buffer)
-      } catch {
-        try {
-          content = new TextDecoder('utf-8').decode(buffer)
-        } catch {
-          try { content = new TextDecoder('windows-1250').decode(buffer) } catch { content = await file.text() }
-        }
-      }
+      setStatus('Preparing content...')
+      const content = encodeB64Utf8(rawText)
       // next position
       let nextPosition = 0
       try {
@@ -180,8 +194,7 @@ function LectionsSection({ user }) {
       await addDoc(colRef, {
         title,
         content,
-        fileName: file.name,
-        contentLength: file.size,
+        contentLength: rawText.length,
         createdAt: serverTimestamp(),
         createdByUid: user.uid,
         env: (env || null),
@@ -191,7 +204,7 @@ function LectionsSection({ user }) {
       })
       setStatus('Uploaded successfully')
       titleRef.current.value = ''
-      if (fileRef.current) fileRef.current.value = ''
+      setContentText('')
       loadLections()
     } catch (e) {
       setStatus(`Upload failed: ${e.message || e}`)
@@ -266,9 +279,71 @@ function LectionsSection({ user }) {
       const snap = await getDoc(fsDoc(colRef, id))
       if (!snap.exists()) { setOrderStatus('Lection not found'); return }
       const d = snap.data()
-      setPreview({ id, title: d.title || '(untitled)', content: String(d.content || '') })
+      const raw = String(d.content || '')
+      setPreview({ id, title: d.title || '(untitled)', content: decodeB64Utf8Maybe(raw) })
       setOrderStatus('Opened')
     } catch (e) { setOrderStatus(`Failed to open: ${e.message || e}`) }
+  }
+
+  const editLection = async (id) => {
+    try {
+      setOrderStatus('Opening for edit...')
+      const snap = await getDoc(fsDoc(colRef, id))
+      if (!snap.exists()) { setOrderStatus('Lection not found'); return }
+      const d = snap.data()
+      setEditModal({ id, title: d.title || '', content: decodeB64Utf8Maybe(String(d.content || '')) })
+      setOrderStatus('Opened')
+    } catch (e) { setOrderStatus(`Failed to open: ${e.message || e}`) }
+  }
+
+  const saveEditLection = async () => {
+    if (!editModal) return
+    const { id, title, content } = editModal
+    const trimmedTitle = String(title || '').trim()
+    if (!trimmedTitle) { setOrderStatus('Title cannot be empty'); return }
+    try {
+      setOrderStatus('Saving edits...')
+      const ref = fsDoc(colRef, id)
+      await updateDoc(ref, { title: trimmedTitle, content: encodeB64Utf8(String(content || '')) })
+      setLections(prev => prev.map(x => x.id === id ? { ...x, title: trimmedTitle } : x))
+      setEditModal(null)
+      setOrderStatus('Saved')
+    } catch (e) { setOrderStatus(`Save failed: ${e.message || e}`) }
+  }
+
+  const wrapSelection = (syntaxLeft, syntaxRight = syntaxLeft) => {
+    const el = contentRef.current
+    if (!el) return
+    const start = el.selectionStart ?? 0
+    const end = el.selectionEnd ?? 0
+    const text = contentText
+    const before = text.slice(0, start)
+    const selected = text.slice(start, end)
+    const after = text.slice(end)
+    const next = before + syntaxLeft + (selected || '') + syntaxRight + after
+    setContentText(next)
+    const cursor = start + syntaxLeft.length + (selected ? selected.length : 0) + syntaxRight.length
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  const insertLink = () => {
+    const url = prompt('Enter URL (https://...)', 'https://')
+    if (url == null || !url.trim()) return
+    const el = contentRef.current
+    const start = el?.selectionStart ?? 0
+    const end = el?.selectionEnd ?? 0
+    const sel = (contentText || '').slice(start, end) || 'text'
+    const md = `[${sel}](${url.trim()})`
+    const before = (contentText || '').slice(0, start)
+    const after = (contentText || '').slice(end)
+    const next = before + md + after
+    setContentText(next)
+    requestAnimationFrame(() => {
+      el?.focus()
+    })
   }
 
   return (
@@ -276,22 +351,22 @@ function LectionsSection({ user }) {
       <div>
         <div className="card bg-base-200">
           <div className="card-body">
-            <h3 className="card-title">Upload lection</h3>
+            <h3 className="card-title">Create lection</h3>
             <form className="grid md:grid-cols-2 gap-3" onSubmit={handleUpload}>
               <FormField title="Title">
                 <input ref={titleRef} className="input input-bordered" required />
               </FormField>
-              <FormField title="Text file (.txt)">
-                <input ref={fileRef} type="file" accept=".txt" className="file-input file-input-bordered" required />
+              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Use toolbar for bold, italic, links; supports Markdown.">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
+                  <button type="button" className="btn btn-xs" onClick={insertLink}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
+                </div>
+                <textarea ref={contentRef} className="textarea textarea-bordered min-h-40" value={contentText} onChange={e=>setContentText(e.target.value)} placeholder="Type Markdown text here..." required />
               </FormField>
-              <FormField title="File encoding" helper="Try Windows-1250 if characters look wrong">
-                <select value={encoding} onChange={e => setEncoding(e.target.value)} className="select select-bordered">
-                  <option value="utf-8">UTF-8 (default)</option>
-                  <option value="windows-1250">Windows-1250 (Central Europe)</option>
-                  <option value="iso-8859-2">ISO-8859-2 (Central Europe)</option>
-                </select>
-              </FormField>
-              <div className="flex items-end gap-3">
+              <div className="flex items-end gap-3 md:col-span-2">
                 <button className="btn btn-primary" type="submit">Upload</button>
                 <span className="text-base-content/60">{status}</span>
               </div>
@@ -318,6 +393,7 @@ function LectionsSection({ user }) {
                     <button className="btn btn-sm" disabled={index===0} onClick={() => reorder(index, index-1)}>↑</button>
                     <button className="btn btn-sm" disabled={index===lections.length-1} onClick={() => reorder(index, index+1)}>↓</button>
                     <button className="btn btn-sm" onClick={() => renameLection(item)}>Rename</button>
+                    <button className="btn btn-sm" onClick={() => editLection(item.id)}>Edit</button>
                     <button className="btn btn-sm" onClick={() => toggleLock(item)}>{item.locked ? 'Unlock' : 'Lock'}</button>
                     <button className="btn btn-sm btn-error" onClick={() => del(item)}>Delete</button>
                   </div>
@@ -358,6 +434,31 @@ function LectionsSection({ user }) {
             </pre>
           </div>
           <form method="dialog" className="modal-backdrop"><button onClick={()=>setPreview(null)}>close</button></form>
+        </dialog>
+      )}
+
+      {editModal && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-4xl">
+            <div className="flex items-center justify-between">
+              <strong>Edit lection</strong>
+              <form method="dialog"><button className="btn btn-sm" onClick={()=>setEditModal(null)}>Close</button></form>
+            </div>
+            <div className="mt-2 text-sm text-base-content/70">ID: {editModal.id}</div>
+            <div className="mt-3 space-y-3">
+              <FormField title="Title">
+                <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
+              </FormField>
+              <FormField title="Content (Markdown)">
+                <textarea className="textarea textarea-bordered min-h-60" value={editModal.content} onChange={e=>setEditModal(m=>({...m, content: e.target.value}))} />
+              </FormField>
+              <div className="flex gap-2 items-center">
+                <button className="btn btn-primary" onClick={saveEditLection}>Save</button>
+                <span className="text-base-content/60">{orderStatus}</span>
+              </div>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={()=>setEditModal(null)}>close</button></form>
         </dialog>
       )}
     </div>
