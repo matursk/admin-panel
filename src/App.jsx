@@ -451,6 +451,7 @@ function LectionsSection({ user }) {
                   onChange={e=>setContentText(e.target.value)}
                   placeholder="Type Markdown text here..."
                   required
+                  mode="inline"
                 />
               </FormField>
               <div className="flex items-end gap-3 md:col-span-2">
@@ -550,6 +551,7 @@ function LectionsSection({ user }) {
                   ref={editContentRef}
                   value={editModal.content}
                   onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
+                  mode="inline"
                 />
               </FormField>
               <div className="flex gap-2 items-center">
