@@ -396,7 +396,13 @@ function LectionsSection({ user }) {
         const spacer = after.startsWith('\n') ? needed : ('\n' + needed)
         const next = `${before}${md}${spacer}${after}`
         setEditModal(m => ({ ...m, content: next }))
-        requestAnimationFrame(() => { el?.focus(); const np = (before + md + spacer).length; el?.setSelectionRange(np, np) })
+        requestAnimationFrame(() => {
+          if (!el) return
+          el.focus()
+          const np = (before + md + spacer).length
+          el.setSelectionRange(np, np)
+          try { el.dispatchEvent(new Event('select', { bubbles: true })) } catch {}
+        })
       } else {
         const el = contentRef.current
         const src = String(contentText || '')
@@ -407,7 +413,13 @@ function LectionsSection({ user }) {
         const spacer = after.startsWith('\n') ? needed : ('\n' + needed)
         const next = `${before}${md}${spacer}${after}`
         setContentText(next)
-        requestAnimationFrame(() => { el?.focus(); const np = (before + md + spacer).length; el?.setSelectionRange(np, np) })
+        requestAnimationFrame(() => {
+          if (!el) return
+          el.focus()
+          const np = (before + md + spacer).length
+          el.setSelectionRange(np, np)
+          try { el.dispatchEvent(new Event('select', { bubbles: true })) } catch {}
+        })
       }
     } finally {
       setImageDialog(null)
