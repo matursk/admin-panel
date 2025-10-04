@@ -81,7 +81,6 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     if (!r) return pos
     // Prefer after the token
     let next = bias === 'backward' ? r.start : r.end + 1
-    // If the next char is not a newline, still snap right after the token
     return next
   }
 
@@ -118,11 +117,16 @@ const MarkdownTextarea = forwardRef(function MarkdownTextarea(
     keys.forEach(k => { ov.style[k] = cs[k] })
   })
 
-  // Update overlay HTML on value changes
+  // Update overlay HTML on value changes and keep its height in sync with textarea's scrollHeight
   useEffect(() => {
+    const ta = textareaRef.current
     const ov = overlayRef.current
     if (!ov) return
     ov.innerHTML = highlightMarkdown(value || '')
+    if (ta) {
+      // Ensure overlay covers the entire content area
+      ov.style.minHeight = ta.scrollHeight + 'px'
+    }
   }, [value, caretIndex])
 
   // Scroll sync
