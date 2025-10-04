@@ -119,8 +119,10 @@ function LectionsSection({ user }) {
   const [lections, setLections] = useState([])
   const titleRef = useRef(null)
   const contentRef = useRef(null)
+  const editContentRef = useRef(null)
   const [contentText, setContentText] = useState('')
   const [editModal, setEditModal] = useState(null) // { id, title, content }
+  const [linkDialog, setLinkDialog] = useState(null) // { target: 'create'|'edit', text, url, start, end }
 
   const colRef = useMemo(() => collection(db, collectionName), [collectionName])
 
@@ -258,22 +260,7 @@ function LectionsSection({ user }) {
     } catch (e) { setOrderStatus(`Failed to delete: ${e.message || e}`) }
   }
 
-  const renameLection = async (item) => {
-    try {
-      const current = String(item.title || '')
-      const next = prompt('New title', current)
-      if (next == null) return
-      const title = next.trim()
-      if (!title) { setOrderStatus('Title cannot be empty'); return }
-      setOrderStatus('Renaming...')
-      const ref = fsDoc(colRef, item.id)
-      await updateDoc(ref, { title })
-      setLections(prev => prev.map(x => x.id === item.id ? { ...x, title } : x))
-      setOrderStatus('Renamed')
-    } catch (e) {
-      setOrderStatus(`Rename failed: ${e.message || e}`)
-    }
-  }
+  // Removed legacy rename flow; title is edited inside the edit modal now.
 
   const [preview, setPreview] = useState(null)
   const openLection = async (id) => {
@@ -332,21 +319,58 @@ function LectionsSection({ user }) {
     })
   }
 
-  const insertLink = () => {
-    const url = prompt('Enter URL (https://...)', 'https://')
-    if (url == null || !url.trim()) return
-    const el = contentRef.current
-    const start = el?.selectionStart ?? 0
-    const end = el?.selectionEnd ?? 0
-    const sel = (contentText || '').slice(start, end) || 'text'
-    const md = `[${sel}](${url.trim()})`
-    const before = (contentText || '').slice(0, start)
-    const after = (contentText || '').slice(end)
-    const next = before + md + after
-    setContentText(next)
+  const wrapSelectionEdit = (syntaxLeft, syntaxRight = syntaxLeft) => {
+    const el = editContentRef.current
+    if (!el || !editModal) return
+    const start = el.selectionStart ?? 0
+    const end = el.selectionEnd ?? 0
+    const text = String(editModal.content || '')
+    const before = text.slice(0, start)
+    const selected = text.slice(start, end)
+    const after = text.slice(end)
+    const next = before + syntaxLeft + (selected || '') + syntaxRight + after
+    setEditModal(m => ({ ...m, content: next }))
+    const cursor = start + syntaxLeft.length + (selected ? selected.length : 0) + syntaxRight.length
     requestAnimationFrame(() => {
-      el?.focus()
+      el.focus()
+      el.setSelectionRange(cursor, cursor)
     })
+  }
+
+  const openLinkDialog = (target) => {
+    const el = target === 'edit' ? editContentRef.current : contentRef.current
+    if (!el) return
+    const start = el.selectionStart ?? 0
+    const end = el.selectionEnd ?? 0
+    const source = target === 'edit' ? String(editModal?.content || '') : String(contentText || '')
+    const sel = source.slice(start, end)
+    setLinkDialog({ target, text: sel || '', url: 'https://', start, end })
+  }
+
+  const confirmLinkInsert = () => {
+    if (!linkDialog) return
+    const { target, text, url, start, end } = linkDialog
+    const safeText = (text && text.trim()) ? text.trim() : 'text'
+    const safeUrl = (url && url.trim()) ? url.trim() : 'https://'
+    const md = `[${safeText}](${safeUrl})`
+    if (target === 'edit') {
+      const el = editContentRef.current
+      const src = String(editModal?.content || '')
+      const before = src.slice(0, start)
+      const after = src.slice(end)
+      const next = before + md + after
+      setEditModal(m => ({ ...m, content: next }))
+      requestAnimationFrame(() => { el?.focus(); const pos = (before + md).length; el?.setSelectionRange(pos, pos) })
+    } else {
+      const el = contentRef.current
+      const src = String(contentText || '')
+      const before = src.slice(0, start)
+      const after = src.slice(end)
+      const next = before + md + after
+      setContentText(next)
+      requestAnimationFrame(() => { el?.focus(); const pos = (before + md).length; el?.setSelectionRange(pos, pos) })
+    }
+    setLinkDialog(null)
   }
 
   return (
@@ -363,7 +387,7 @@ function LectionsSection({ user }) {
                 <div className="flex flex-wrap gap-2 mb-2">
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
-                  <button type="button" className="btn btn-xs" onClick={insertLink}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('create')}>Link</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
                 </div>
@@ -401,7 +425,6 @@ function LectionsSection({ user }) {
                   <div className="flex gap-1">
                     <button className="btn btn-sm" disabled={index===0} onClick={() => reorder(index, index-1)}>↑</button>
                     <button className="btn btn-sm" disabled={index===lections.length-1} onClick={() => reorder(index, index+1)}>↓</button>
-                    <button className="btn btn-sm" onClick={() => renameLection(item)}>Rename</button>
                     <button className="btn btn-sm" onClick={() => editLection(item.id)}>Edit</button>
                     <button className="btn btn-sm" onClick={() => toggleLock(item)}>{item.locked ? 'Unlock' : 'Lock'}</button>
                     <button className="btn btn-sm btn-error" onClick={() => del(item)}>Delete</button>
@@ -459,7 +482,15 @@ function LectionsSection({ user }) {
                 <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
               </FormField>
               <FormField title="Content (Markdown)" helper="Inline preview appears as you type.">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('**')}>Bold</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('_')}>Italic</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('edit')}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('# ', '')}>H1</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('## ', '')}>H2</button>
+                </div>
                 <MarkdownTextarea
+                  ref={editContentRef}
                   value={editModal.content}
                   onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
                 />
@@ -471,6 +502,29 @@ function LectionsSection({ user }) {
             </div>
           </div>
           <form method="dialog" className="modal-backdrop"><button onClick={()=>setEditModal(null)}>close</button></form>
+        </dialog>
+      )}
+
+      {linkDialog && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <h3 className="font-bold text-lg">Insert link</h3>
+            <div className="mt-3 space-y-3">
+              <FormField title="Text">
+                <input className="input input-bordered w-full" value={linkDialog.text}
+                       onChange={e=>setLinkDialog(d=>({...d, text: e.target.value}))} />
+              </FormField>
+              <FormField title="URL" helper="Include protocol, e.g. https://example.com">
+                <input className="input input-bordered w-full" value={linkDialog.url}
+                       onChange={e=>setLinkDialog(d=>({...d, url: e.target.value}))} placeholder="https://" />
+              </FormField>
+              <div className="flex gap-2 justify-end">
+                <form method="dialog"><button className="btn" onClick={()=>setLinkDialog(null)}>Cancel</button></form>
+                <button className="btn btn-primary" onClick={confirmLinkInsert}>Insert</button>
+              </div>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={()=>setLinkDialog(null)}>close</button></form>
         </dialog>
       )}
     </div>
