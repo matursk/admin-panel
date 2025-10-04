@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import FormField from './components/FormField.jsx'
 import MarkdownTextarea from './components/MarkdownTextarea.jsx'
-import RichMarkdownEditor from './components/RichMarkdownEditor.jsx'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -437,10 +436,22 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input ref={titleRef} className="input input-bordered" required />
               </FormField>
-              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Type rich content; images embed inline. Markdown is saved.">
-                <RichMarkdownEditor
+              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Use toolbar for bold, italic, links; images embed inline.">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
+                  <button type="button" className="btn btn-xs" onClick={insertLink}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openImageDialog('create')}>Image</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
+                </div>
+                <MarkdownTextarea
+                  ref={contentRef}
                   value={contentText}
                   onChange={e=>setContentText(e.target.value)}
+                  placeholder="Type Markdown text here..."
+                  required
+                  mode="inline"
                 />
               </FormField>
               <div className="flex items-end gap-3 md:col-span-2">
@@ -527,10 +538,20 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
               </FormField>
-              <FormField title="Content (Markdown)" helper="Type rich content; images embed inline. Markdown is saved.">
-                <RichMarkdownEditor
+              <FormField title="Content (Markdown)" helper="Use toolbar; images embed inline.">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('**')}>Bold</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('_')}>Italic</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('edit')}>Link</button>
+                  <button type="button" className="btn btn-xs" onClick={() => openImageDialog('edit')}>Image</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('# ', '')}>H1</button>
+                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('## ', '')}>H2</button>
+                </div>
+                <MarkdownTextarea
+                  ref={editContentRef}
                   value={editModal.content}
                   onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
+                  mode="inline"
                 />
               </FormField>
               <div className="flex gap-2 items-center">
