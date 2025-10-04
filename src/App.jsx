@@ -436,7 +436,7 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input ref={titleRef} className="input input-bordered" required />
               </FormField>
-              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Inline preview appears in the same field; markers are grayed out.">
+              <FormField className="md:col-span-2" title="Content (Markdown)" helper="Preview renders inline inside this field while you type.">
                 <div className="flex flex-wrap gap-2 mb-2">
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
@@ -451,13 +451,8 @@ function LectionsSection({ user }) {
                   onChange={e=>setContentText(e.target.value)}
                   placeholder="Type Markdown text here..."
                   required
+                  mode="inline"
                 />
-                <div className="rounded border border-base-300 p-3 bg-base-300/40 overflow-auto mt-3">
-                  <div className="text-xs uppercase tracking-wide text-base-content/50 mb-2">Preview</div>
-                  <div className="prose prose-invert max-w-none text-base-content/80">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{contentText || '*Nothing to preview*'}</ReactMarkdown>
-                  </div>
-                </div>
               </FormField>
               <div className="flex items-end gap-3 md:col-span-2">
                 <button className="btn btn-primary" type="submit">Upload</button>
@@ -543,7 +538,7 @@ function LectionsSection({ user }) {
               <FormField title="Title">
                 <input className="input input-bordered" value={editModal.title} onChange={e=>setEditModal(m=>({...m, title: e.target.value}))} />
               </FormField>
-              <FormField title="Content (Markdown)" helper="Preview below renders images while you type.">
+              <FormField title="Content (Markdown)" helper="Preview renders inline inside this field while you type.">
                 <div className="flex flex-wrap gap-2 mb-2">
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('_')}>Italic</button>
@@ -556,13 +551,8 @@ function LectionsSection({ user }) {
                   ref={editContentRef}
                   value={editModal.content}
                   onChange={e=>setEditModal(m=>({...m, content: e.target.value}))}
+                  mode="inline"
                 />
-                <div className="rounded border border-base-300 p-3 bg-base-300/40 overflow-auto mt-3">
-                  <div className="text-xs uppercase tracking-wide text-base-content/50 mb-2">Preview</div>
-                  <div className="prose prose-invert max-w-none text-base-content/80">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{editModal.content || '*Nothing to preview*'}</ReactMarkdown>
-                  </div>
-                </div>
               </FormField>
               <div className="flex gap-2 items-center">
                 <button className="btn btn-primary" onClick={saveEditLection}>Save</button>
