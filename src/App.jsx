@@ -441,8 +441,6 @@ function LectionsSection({ user }) {
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelection('_')}>Italic</button>
                   <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('create')}>Link</button>
-                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('# ', '')}>H1</button>
-                  <button type="button" className="btn btn-xs" onClick={() => wrapSelection('## ', '')}>H2</button>
                 </div>
                 <MarkdownTextarea
                   ref={contentRef}
@@ -542,8 +540,6 @@ function LectionsSection({ user }) {
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('**')}>Bold</button>
                   <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('_')}>Italic</button>
                   <button type="button" className="btn btn-xs" onClick={() => openLinkDialog('edit')}>Link</button>
-                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('# ', '')}>H1</button>
-                  <button type="button" className="btn btn-xs" onClick={() => wrapSelectionEdit('## ', '')}>H2</button>
                 </div>
                 <MarkdownTextarea
                   ref={editContentRef}
