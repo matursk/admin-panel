@@ -721,10 +721,13 @@ function LectionsSection({ user }) {
 function DebugAccess() {
   const [status, setStatus] = useState('')
   const [info, setInfo] = useState('')
+  const [statusKind, setStatusKind] = useState('idle') // 'idle' | 'loading' | 'success' | 'error'
   const user = useAuth()
   const checkAccess = async () => {
-    if (!user) { setStatus('Not signed in'); setInfo(''); return }
+    if (!user) { setStatusKind('error'); setStatus('Not signed in'); setInfo(''); return }
     try {
+      setStatusKind('loading')
+      setStatus('Checking token...')
       const tokenResult = await user.getIdTokenResult(true)
       const summary = {
         email: user.email,
@@ -734,6 +737,7 @@ function DebugAccess() {
         claimsEmailVerified: tokenResult.claims?.email_verified || null,
       }
       let text = JSON.stringify(summary, null, 2)
+      setStatus('Testing lections write...')
       // test writes in lections/questions
       try {
         const col = collection(db, 'lections')
@@ -741,16 +745,17 @@ function DebugAccess() {
         const snap = await getDoc(docRef)
         text += '\n' + JSON.stringify({ testWriteLections: { id: docRef.id, path: docRef.path, exists: snap.exists(), data: snap.data() || null } }, null, 2)
         await deleteDoc(docRef)
-      } catch (err) { setStatus(`Lections test write/delete failed: ${err?.code || err?.message || String(err)}`) }
+      } catch (err) { setStatusKind('error'); setStatus(`Lections test write/delete failed: ${err?.code || err?.message || String(err)}`) }
       try {
+        setStatus('Testing questions write...')
         const colQ = collection(db, 'questions')
         const docRefQ = await addDoc(colQ, { _test: true, t: Date.now(), by: user.email || user.uid })
         const snapQ = await getDoc(docRefQ)
         text += '\n' + JSON.stringify({ testWriteQuestions: { id: docRefQ.id, path: docRefQ.path, exists: snapQ.exists(), data: snapQ.data() || null } }, null, 2)
         await deleteDoc(docRefQ)
-      } catch (err) { setStatus(`Questions test write/delete failed: ${err?.code || err?.message || String(err)}`) }
+      } catch (err) { setStatusKind('error'); setStatus(`Questions test write/delete failed: ${err?.code || err?.message || String(err)}`) }
       setInfo(text)
-      if (!status) setStatus('Token claims loaded')
+      if (statusKind !== 'error') { setStatusKind('success'); setStatus('Access OK') }
     } catch (e) { setStatus(`Failed to get token claims: ${e.message || e}`) }
   }
   return (
@@ -760,7 +765,8 @@ function DebugAccess() {
         <p className="text-base-content/60">User and token claims; tests a write with current rules.</p>
         <div className="flex gap-2 items-center">
           <button className="btn btn-outline" onClick={checkAccess}>Check admin access</button>
-          <span className="text-base-content/60">{status}</span>
+          {statusKind === 'loading' && <span className="loading loading-spinner loading-xs text-info" aria-hidden="true" />}
+          <span className={statusKind === 'success' ? 'text-success' : statusKind === 'error' ? 'text-error' : statusKind === 'loading' ? 'text-info' : 'text-base-content/60'}>{status}</span>
         </div>
         <pre className="mt-3 text-xs whitespace-pre-wrap max-h-48 overflow-auto text-base-content/60">{info}</pre>
       </div>
