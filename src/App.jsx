@@ -98,6 +98,7 @@ function Topbar({ user, onSignOut }) {
 function SectionTabs({ active, setActive }) {
   const tabs = [
     { id: 'lections', label: 'Lections' },
+    { id: 'assign', label: 'Assign groups' },
     { id: 'questions', label: 'Questions' },
     { id: 'version', label: 'Version' },
   ]
@@ -107,6 +108,119 @@ function SectionTabs({ active, setActive }) {
         <button key={t.id} role="tab" className={cn('tab', active === t.id && 'tab-active')}
                 onClick={() => setActive(t.id)}>{t.label}</button>
       ))}
+    </div>
+  )
+}
+
+function GroupsSection() {
+  const GROUPS = ['public', 'spssenr', 'oapb']
+  const [status, setStatus] = useState('')
+  const [items, setItems] = useState([]) // { id, title, groups:Set<string>, position }
+
+  const safePosition = (val) => {
+    const num = Number(val)
+    return Number.isFinite(num) ? num : Number.POSITIVE_INFINITY
+  }
+
+  const load = async () => {
+    try {
+      setStatus('Loading...')
+      let snap
+      try {
+        snap = await getDocs(query(collection(db, 'lections'), orderBy('position', 'asc')))
+      } catch {
+        snap = await getDocs(collection(db, 'lections'))
+      }
+      const list = []
+      snap.forEach(d => {
+        const data = d.data() || {}
+        const groups = Array.isArray(data.groups) ? data.groups.map(String) : []
+        list.push({ id: d.id, title: data.title || '', position: safePosition(data.position), groups: new Set(groups) })
+      })
+      list.sort((a, b) => a.position - b.position)
+      setItems(list)
+      setStatus(`Loaded ${list.length}`)
+    } catch (e) {
+      setStatus(`Failed: ${e.message || e}`)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const toggle = async (itemId, group) => {
+    try {
+      setStatus('Saving...')
+      setItems(prev => prev.map(it => {
+        if (it.id !== itemId) return it
+        const next = new Set(it.groups)
+        if (next.has(group)) next.delete(group)
+        else next.add(group)
+        return { ...it, groups: next }
+      }))
+      const current = items.find(x => x.id === itemId)
+      const nextGroups = new Set(current?.groups || [])
+      if (nextGroups.has(group)) nextGroups.delete(group)
+      else nextGroups.add(group)
+      await updateDoc(fsDoc(collection(db, 'lections'), itemId), { groups: Array.from(nextGroups) })
+      setStatus('Saved')
+    } catch (e) {
+      setStatus(`Save failed: ${e.message || e}`)
+      // Reload to ensure local state matches server
+      try { await load() } catch {}
+    }
+  }
+
+  return (
+    <div className="mt-4 card bg-base-200">
+      <div className="card-body">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="card-title">Assign groups to lections</h3>
+          <div className="flex items-center gap-2">
+            <button className="btn btn-outline" onClick={load}>Refresh</button>
+            <span className="text-base-content/60">{status}</span>
+          </div>
+        </div>
+        <div className="mt-3 overflow-auto">
+          <table className="table table-zebra">
+            <thead>
+              <tr>
+                <th className="whitespace-nowrap">#</th>
+                <th className="whitespace-nowrap text-left">Lection</th>
+                {GROUPS.map(g => (
+                  <th key={g} className="whitespace-nowrap text-center">{g}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it, idx) => (
+                <tr key={it.id}>
+                  <td className="text-xs text-base-content/60">{idx + 1}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{it.title || '(untitled)'}</span>
+                      <span className="text-xs text-base-content/50">#{it.id}</span>
+                    </div>
+                  </td>
+                  {GROUPS.map(g => (
+                    <td key={g} className="text-center">
+                      <input
+                        type="checkbox"
+                        className="checkbox"
+                        checked={it.groups.has(g)}
+                        onChange={() => toggle(it.id, g)}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr><td colSpan={2 + GROUPS.length} className="text-center text-base-content/60">No lections</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-base-content/60 mt-2">Tip: Check <code>public</code> for global visibility, or a school code for school‑specific lections.</p>
+      </div>
     </div>
   )
 }
@@ -948,6 +1062,7 @@ export default function App() {
           <>
             <SectionTabs active={active} setActive={setActive} />
             {active === 'lections' && <LectionsSection user={user} />}
+            {active === 'assign' && <GroupsSection />}
             {active === 'questions' && <QuestionsSection />}
             {active === 'version' && <VersionSection />}
           </>
