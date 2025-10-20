@@ -114,7 +114,7 @@ function SectionTabs({ active, setActive }) {
 }
 
 function GroupsSection() {
-  const GROUPS = ['public', 'spssenr', 'oapb']
+  const GROUPS = ['public', 'preview', 'spssenr', 'oapb']
   const [status, setStatus] = useState('')
   const [items, setItems] = useState([]) // { id, title, groups:Set<string>, position }
 
