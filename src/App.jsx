@@ -100,6 +100,7 @@ function SectionTabs({ active, setActive }) {
     { id: 'lections', label: 'Lections' },
     { id: 'assign', label: 'Assign groups' },
     { id: 'questions', label: 'Questions' },
+    { id: 'tests', label: 'Tests (PDF)' },
     { id: 'version', label: 'Version' },
   ]
   return (
@@ -1070,10 +1071,72 @@ export default function App() {
             {active === 'lections' && <LectionsSection user={user} />}
             {active === 'assign' && <GroupsSection />}
             {active === 'questions' && <QuestionsSection />}
+            {active === 'tests' && <TestsSection />}
             {active === 'version' && <VersionSection />}
           </>
         )}
       </main>
+    </div>
+  )
+}
+
+function TestsSection() {
+  const [status, setStatus] = useState('')
+  const [title, setTitle] = useState('')
+  const [pdfFile, setPdfFile] = useState(null)
+  const [annotations, setAnnotations] = useState('[]')
+
+  const uploadPdf = async () => {
+    try {
+      if (!pdfFile) { setStatus('Pick a PDF first'); return }
+      setStatus('Uploading PDF...')
+      const form = new FormData()
+      form.append('file', pdfFile)
+      const resp = await fetch('/api/upload-file', { method: 'POST', body: form })
+      if (!resp.ok) throw new Error(`Upload failed (${resp.status})`)
+      const data = await resp.json()
+      setStatus(`Uploaded PDF`) // do not expose URL here, will use on Save
+      return data.url
+    } catch (e) { setStatus(e.message || String(e)); return null }
+  }
+
+  const save = async () => {
+    try {
+      setStatus('Saving test...')
+      let pdfUrl = null
+      if (pdfFile) pdfUrl = await uploadPdf()
+      if (!pdfUrl) { setStatus('Upload failed or no PDF selected'); return }
+      let anns
+      try { anns = JSON.parse(annotations) } catch { setStatus('Annotations must be valid JSON'); return }
+      const payload = { title: (title||'').trim(), pdfUrl, annotations: Array.isArray(anns) ? anns : [], createdAt: serverTimestamp() }
+      await addDoc(collection(db, 'tests'), payload)
+      setStatus('Saved')
+      setTitle('')
+      setPdfFile(null)
+      setAnnotations('[]')
+    } catch (e) { setStatus(`Save failed: ${e.message || e}`) }
+  }
+
+  return (
+    <div className="mt-4 card bg-base-200">
+      <div className="card-body">
+        <h3 className="card-title">Upload test PDF and annotations</h3>
+        <div className="grid md:grid-cols-2 gap-3">
+          <FormField title="Title">
+            <input className="input input-bordered" value={title} onChange={e=>setTitle(e.target.value)} placeholder="SJL 2022 jar" />
+          </FormField>
+          <FormField title="PDF file">
+            <input type="file" accept="application/pdf" className="file-input file-input-bordered" onChange={e=>setPdfFile(e.target.files?.[0]||null)} />
+          </FormField>
+          <FormField className="md:col-span-2" title="Annotations (JSON)" helper='Array of items: { id, page, type:"choice|text", label, options?, rect? }'>
+            <textarea className="textarea textarea-bordered min-h-40 font-mono" value={annotations} onChange={e=>setAnnotations(e.target.value)} />
+          </FormField>
+        </div>
+        <div className="flex gap-2 items-center mt-3">
+          <button className="btn btn-primary" onClick={save}>Save</button>
+          <span className="text-base-content/60">{status}</span>
+        </div>
+      </div>
     </div>
   )
 }
